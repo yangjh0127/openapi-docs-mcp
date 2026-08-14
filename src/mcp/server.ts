@@ -1,14 +1,24 @@
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { OpenApiService } from "../service.js";
 import type { JsonObject } from "../types.js";
 
 const depthSchema = z.number().int().min(1).max(12).default(5);
+const packageJson = createRequire(import.meta.url)("../../package.json") as {
+  version?: unknown;
+};
+
+if (typeof packageJson.version !== "string") {
+  throw new Error("Missing package version in package.json");
+}
+
+const serverVersion = packageJson.version;
 
 export function createMcpServer(service: OpenApiService): McpServer {
   const server = new McpServer({
     name: "openapi-docs-mcp",
-    version: "0.1.0",
+    version: serverVersion,
   });
 
   server.registerTool(
@@ -101,6 +111,34 @@ export function createMcpServer(service: OpenApiService): McpServer {
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async () => success({ groups: service.listGroups() }),
+  );
+
+  server.registerTool(
+    "reload_document",
+    {
+      title: "Reload the OpenAPI document",
+      description:
+        "Reload and validate the configured OpenAPI source, then atomically replace the in-memory document. If loading fails, the previous document remains active.",
+      inputSchema: z.object({}),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    async () => {
+      try {
+        return success(await service.reload());
+      } catch (error) {
+        return failure(
+          `Failed to reload OpenAPI document: ${error instanceof Error ? error.message : String(error)}`,
+          {
+            source: service.context.source,
+            activeOperationCount: service.context.operations.length,
+          },
+        );
+      }
+    },
   );
 
   return server;

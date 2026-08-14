@@ -13,12 +13,14 @@ interface CliOptions {
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
-  const context = await loadOpenApi(options.source, {
+  const loadOptions = {
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(Object.keys(options.headers).length ? { headers: options.headers } : {}),
     validationMode: options.strictValidation ? "strict" : "compatible",
-  });
-  const service = new OpenApiService(context);
+  } as const;
+  const reload = () => loadOpenApi(options.source, loadOptions);
+  const context = await reload();
+  const service = new OpenApiService(context, reload);
 
   console.error(
     `Loaded ${context.operations.length} operations from ${context.source} (OpenAPI ${context.version})`,

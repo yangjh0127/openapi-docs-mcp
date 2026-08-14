@@ -37,5 +37,16 @@ describe("OpenAPI service", () => {
     });
     expect(service.listSchemas()).toContain("PageQuery");
   });
+
+  it("keeps the previous context when reloading fails", async () => {
+    const context = await loadOpenApi(fixturePath);
+    const reloadable = new OpenApiService(context, async () => {
+      throw new Error("backend unavailable");
+    });
+
+    await expect(reloadable.reload()).rejects.toThrow("backend unavailable");
+    expect(reloadable.context).toBe(context);
+    expect(reloadable.context.operations).toHaveLength(3);
+  });
 });
 
