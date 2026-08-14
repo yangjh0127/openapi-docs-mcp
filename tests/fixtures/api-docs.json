@@ -1,0 +1,94 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Safety API", "version": "1.0.0" },
+  "paths": {
+    "/api/hazard/safetyHazard/page": {
+      "post": {
+        "tags": ["异常管理接口"],
+        "summary": "分页查询",
+        "operationId": "pageSafetyHazards",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PageQuery" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HazardPageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/safety/safetyDailyPlan/exceptionList": {
+      "post": {
+        "tags": ["每日计划接口"],
+        "summary": "任务异常列表",
+        "operationId": "listTaskExceptions",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/user/{id}": {
+      "get": {
+        "tags": ["用户接口"],
+        "summary": "获取用户详情",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PageQuery": {
+        "type": "object",
+        "required": ["pageNum", "pageSize"],
+        "properties": {
+          "pageNum": { "type": "integer", "minimum": 1 },
+          "pageSize": { "type": "integer", "minimum": 1 },
+          "keyword": { "type": "string" }
+        }
+      },
+      "HazardPageResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/HazardPage" }
+        }
+      },
+      "HazardPage": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SafetyHazardVO" }
+          }
+        }
+      },
+      "SafetyHazardVO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "title": { "type": "string" },
+          "parent": { "$ref": "#/components/schemas/SafetyHazardVO" }
+        }
+      }
+    }
+  }
+}
+
