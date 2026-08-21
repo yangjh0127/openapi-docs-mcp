@@ -219,7 +219,12 @@ function referenceName(ref: string): string {
 }
 
 function isExternalReference(ref: string): boolean {
-  return /^[a-z][a-z\d+.-]*:/i.test(ref) || /^(?:\.\.?\/|\/)/.test(ref);
+  return (
+    /^[a-z][a-z\d+.-]*:/i.test(ref) ||
+    /^(?:\.\.?\/|\/)/.test(ref) ||
+    ref.indexOf("#") > 0 ||
+    /\.(?:json|ya?ml)$/i.test(ref)
+  );
 }
 
 function resolveLocalReference(document: JsonObject, ref: string): unknown {

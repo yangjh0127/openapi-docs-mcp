@@ -62,9 +62,11 @@ describe("normalizeOpenApiDocument references", () => {
       {},
       "https://example.com/openapi.json#/User",
     );
+    const relativeFile = documentWithSchemas({}, "common.yaml#/User");
 
     expect(normalizeOpenApiDocument(local).diagnostics).toEqual([]);
     expect(normalizeOpenApiDocument(external).diagnostics).toEqual([]);
+    expect(normalizeOpenApiDocument(relativeFile).diagnostics).toEqual([]);
   });
 
   it("repairs a once-percent-encoded exact component name", () => {
