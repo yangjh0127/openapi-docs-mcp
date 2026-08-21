@@ -1,133 +1,71 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/yangjh0127/openapi-docs-mcp/main/assets/openapi-docs-mcp-logo.png" alt="OpenAPI Docs MCP" width="760">
+</p>
+
 # OpenAPI Docs MCP
 
-一个厂商无关的 MCP Server，帮助编码 Agent 搜索和理解 OpenAPI/Swagger 文档，且不会调用文档中描述的真实后端接口。
+> 让编码 Agent 安全、准确地搜索和理解 OpenAPI / Swagger 文档。
 
-第一版重点保证结果确定、准确和稳定：
+[![npm version](https://img.shields.io/npm/v/openapi-docs-mcp?label=npm)](https://www.npmjs.com/package/openapi-docs-mcp)
+![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-- 启动时加载并校验本地或远程 OpenAPI 文档；
-- 启动完成后，所有工具调用都直接读取内存；
-- 使用明确的字段权重搜索中英文接口元数据；
-- 只在查询接口或 Schema 时按需展开本地 `$ref`；
-- 限制 Schema 展开深度，并检测循环引用；
-- 通过 stdio 暴露 4 个只读 MCP 工具；
-- 不绑定 OpenAI、Claude 或其他模型厂商。
+**快速导航：** [名称](#名称) · [简介](#简介) · [详细描述](#详细描述) · [项目状态](#项目状态) · [使用方法](#使用方法)
 
-## 环境要求
+---
 
-- Node.js 20 或更高版本
-- 开发时建议使用 pnpm 11 或更高版本
+## 名称
 
-## 快速开始
+**OpenAPI Docs MCP**
 
-包已经发布到 npm：[openapi-docs-mcp](https://www.npmjs.com/package/openapi-docs-mcp)。
+npm 包：[`openapi-docs-mcp`](https://www.npmjs.com/package/openapi-docs-mcp)
 
-### 使用 npx（推荐）
+## 简介
 
-不需要安装，直接下载并运行指定版本：
+一个厂商无关的 MCP Server，让编码 Agent 能够搜索和理解 OpenAPI/Swagger 文档。
 
-```bash
-npx -y openapi-docs-mcp@0.1.3 \
-  --source https://api.example.com/v3/api-docs \
-  --timeout 30000
-```
+服务只读取接口文档，不会调用文档中描述的真实后端 API。它支持本地文件和远程地址，启动后使用内存索引提供稳定、快速的查询。
 
-建议在 MCP 配置中固定版本，例如 `openapi-docs-mcp@0.1.3`，避免新版本自动升级后改变行为。
+## 详细描述
 
-如果希望始终使用最新版本：
+OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAML、本地文件及 HTTP(S) URL。
 
-```bash
-npx -y openapi-docs-mcp@latest \
-  --source https://api.example.com/v3/api-docs
-```
+它提供 5 个 MCP 工具：
 
-### 使用 pnpm dlx
+| 工具 | 作用 |
+| :--- | :--- |
+| `search_api` | 按关键词、路径、Tag、描述或 `operationId` 搜索接口 |
+| `get_api` | 获取接口参数、请求体、响应和展开后的 Schema |
+| `get_schema` | 按名称读取组件 Schema |
+| `list_groups` | 列出 OpenAPI Tags 及接口数量 |
+| `reload_document` | 重新加载文档，无需重启 MCP Server |
 
-```bash
-pnpm dlx openapi-docs-mcp@0.1.3 \
-  --source https://api.example.com/v3/api-docs \
-  --timeout 30000
-```
+### 核心能力
 
-### 全局安装
+- 支持中英文接口搜索，并对 Summary、Tag、Path 等字段进行确定性加权；
+- 按需展开本地 `$ref`，限制最大深度和属性数量；
+- 检测循环引用，并标记无法解析的引用；
+- 远程文档支持自定义请求头和超时；
+- 刷新失败时保留旧文档，不影响现有查询；
+- 通过 stdio 工作，可接入任意兼容 MCP 的 Agent 或 IDE。
 
-```bash
-npm install --global openapi-docs-mcp@0.1.3
-```
+## 项目状态
 
-安装后可以直接执行：
+| 项目 | 状态 |
+| :--- | :--- |
+| 当前版本 | `0.1.4` |
+| 运行环境 | Node.js 20+ |
+| 项目阶段 | 可用的早期版本 |
+| 传输方式 | stdio |
+| 许可证 | MIT |
 
-```bash
-openapi-docs-mcp \
-  --source https://api.example.com/v3/api-docs \
-  --timeout 30000
-```
+> **说明：** 当前暂不支持外部文件或 URL `$ref`、向量搜索、Streamable HTTP 部署以及真实后端 API 调用。
 
-升级全局版本：
+## 使用方法
 
-```bash
-npm install --global openapi-docs-mcp@latest
-```
+### 方式一：通过 npx 运行（推荐）
 
-## 启动参数示例
-
-### 加载本地文档
-
-支持 OpenAPI/Swagger JSON 和 YAML 文件：
-
-```bash
-npx -y openapi-docs-mcp@0.1.3 --source ./openapi.json
-```
-
-也可以直接使用位置参数：
-
-```bash
-npx -y openapi-docs-mcp@0.1.3 ./openapi.yaml
-```
-
-### 加载远程文档
-
-```bash
-npx -y openapi-docs-mcp@0.1.3 \
-  --source https://api.example.com/v3/api-docs
-```
-
-默认远程加载超时时间为 10 秒，可以通过 `--timeout` 修改：
-
-```bash
-npx -y openapi-docs-mcp@0.1.3 \
-  --source https://api.example.com/v3/api-docs \
-  --timeout 20000
-```
-
-### 加载需要鉴权的文档
-
-可以重复使用 `--header`，格式为 `NAME=VALUE`：
-
-```bash
-npx -y openapi-docs-mcp@0.1.3 \
-  --source https://api.example.com/v3/api-docs \
-  --header Authorization="Bearer token" \
-  --header X-Tenant-Id=tenant-1
-```
-
-日志和错误信息只会写入 stderr，stdout 专门用于传输 MCP 消息。
-
-## CLI 参数
-
-```text
-用法：openapi-docs-mcp --source <文件或URL> [选项]
-
-选项：
-  -s, --source <value>    OpenAPI JSON/YAML 文件或 HTTP(S) URL
-      --header NAME=VALUE 加载远程文档时使用的请求头，可重复传入
-      --timeout <ms>      远程加载超时时间，默认 10000 毫秒
-      --strict-validation 严格模式：任何 OpenAPI 校验警告都会阻止启动
-  -h, --help              显示帮助信息
-```
-
-## MCP Client 配置
-
-可以在任意支持 stdio MCP Server 的 Client 中通过 `npx` 启动，无需克隆或构建本项目：
+无需安装或克隆项目，直接在 MCP Client 中启动：
 
 ```json
 {
@@ -136,7 +74,7 @@ npx -y openapi-docs-mcp@0.1.3 \
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.3",
+        "openapi-docs-mcp@0.1.4",
         "--source",
         "https://api.example.com/v3/api-docs",
         "--timeout",
@@ -147,15 +85,49 @@ npx -y openapi-docs-mcp@0.1.3 \
 }
 ```
 
-### VS Code + mise 兼容配置
+### 方式二：全局安装
 
-VS Code 使用顶层字段 `servers`。如果 VS Code 扩展宿主误用了旧版 Node.js 或旧版 `npx`，可能出现 `ERROR: You must supply a command.`。此时可以让 VS Code 通过 `mise` 固定使用 Node.js 24，再启动本包：
+安装后可以直接使用 `openapi-docs-mcp` 命令：
+
+```bash
+npm install --global openapi-docs-mcp@0.1.4
+openapi-docs-mcp --source https://api.example.com/v3/api-docs --timeout 30000
+```
+
+对应的 MCP Client 配置：
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "project-api-docs": {
-      "type": "stdio",
+      "command": "openapi-docs-mcp",
+      "args": [
+        "--source",
+        "https://api.example.com/v3/api-docs",
+        "--timeout",
+        "30000"
+      ]
+    }
+  }
+}
+```
+
+### 方式三：通过 mise 固定 Node.js
+
+如果 MCP Client 使用了不兼容的 Node.js 或 `npx`，可以通过 mise 固定运行时版本：
+
+```bash
+mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
+  --source https://api.example.com/v3/api-docs \
+  --timeout 30000
+```
+
+在 MCP Client 中，将 `mise` 作为启动命令：
+
+```json
+{
+  "mcpServers": {
+    "project-api-docs": {
       "command": "mise",
       "args": [
         "exec",
@@ -163,7 +135,7 @@ VS Code 使用顶层字段 `servers`。如果 VS Code 扩展宿主误用了旧�
         "--",
         "npx",
         "--yes",
-        "openapi-docs-mcp@0.1.3",
+        "openapi-docs-mcp@0.1.4",
         "--source",
         "https://api.example.com/v3/api-docs",
         "--timeout",
@@ -174,59 +146,76 @@ VS Code 使用顶层字段 `servers`。如果 VS Code 扩展宿主误用了旧�
 }
 ```
 
-在终端执行 `where.exe mise` 可以查看本机 `mise.exe` 的实际路径，并替换示例中的 `command`。配置步骤：
+> **提示：** 不同 MCP Client 的外层配置字段可能是 `mcpServers`、`servers` 或其他名称，但 `command` 和 `args` 的内容相同。如果客户端找不到 `mise`，可通过 Windows 的 `where.exe mise` 或 macOS/Linux 的 `which mise` 查询路径，并将 `command` 替换为绝对路径。
 
-1. 在 VS Code 中按 `Ctrl + Shift + P`；
-2. 执行 `MCP: Open User Configuration`；
-3. 写入上述配置并替换 OpenAPI 地址；
-4. 执行 `MCP: List Servers`，启动或重启 `project-api-docs`。
+### 方式四：同时连接多个项目
 
-推荐将包含内部 OpenAPI 地址或鉴权信息的配置放在 VS Code 用户配置中，不要提交到项目仓库。MCP 使用 stdio 通信，由 VS Code 负责启动进程，不需要提前在终端中常驻运行命令。
-
-同一个 npm 包可以使用不同 OpenAPI 文档启动多个实例，因此不同项目之间不会冲突。
-
-### 同时配置多个实例
-
-每个实例使用不同的 MCP Server 名称和 `--source`：
+为每份 OpenAPI 文档配置一个独立的 MCP 实例：
 
 ```json
 {
   "mcpServers": {
-    "safety-api-docs": {
+    "order-api-docs": {
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.3",
+        "openapi-docs-mcp@0.1.4",
         "--source",
-        "https://safety.example.com/v3/api-docs",
-        "--timeout",
-        "30000"
+        "https://order.example.com/v3/api-docs"
       ]
     },
-    "mall-api-docs": {
+    "user-api-docs": {
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.3",
+        "openapi-docs-mcp@0.1.4",
         "--source",
-        "https://mall.example.com/v3/api-docs",
-        "--timeout",
-        "30000"
+        "https://user.example.com/v3/api-docs"
       ]
     }
   }
 }
 ```
 
-### 使用本地源码构建
+每个实例单独加载和刷新自己的文档，互不影响。
 
-参与开发时才需要克隆源码并构建：
+### 更多启动示例
+
+**读取本地文档**
+
+```bash
+npx -y openapi-docs-mcp@0.1.4 --source ./openapi.yaml
+```
+
+**读取需要鉴权的远程文档**
+
+```bash
+npx -y openapi-docs-mcp@0.1.4 \
+  --source https://api.example.com/v3/api-docs \
+  --header Authorization="Bearer token" \
+  --header X-Tenant-Id=tenant-1 \
+  --timeout 30000
+```
+
+### CLI 参数
+
+| 参数 | 说明 |
+| :--- | :--- |
+| `-s, --source <value>` | OpenAPI 文件或 HTTP(S) URL，必填 |
+| `--header NAME=VALUE` | 远程文档请求头，可重复使用 |
+| `--timeout <ms>` | 远程加载超时，默认 10000 毫秒 |
+| `--strict-validation` | 将所有 OpenAPI 校验警告视为错误 |
+| `-h, --help` | 显示帮助 |
+
+### 本地开发
 
 ```bash
 pnpm install
+pnpm test
 pnpm build
 node dist/cli.js --source ./openapi.json
 ```
+<<<<<<< HEAD
 
 本地 MCP 配置需要使用 `dist/cli.js` 的绝对路径：
 
@@ -399,3 +388,5 @@ Formatter 不会改写已经加载的 OpenAPI 声明。兼容模式只在加载�
 未解析或存在多个精确候选的引用会保持原值，项目不会进行模糊、忽略大小写或裁剪空白后的匹配，也不会加载外部 URL 或文件引用。只有无法解析文档、缺少顶层版本、`info` 或 `paths` 等整体不可用情况才会阻止兼容模式启动。
 
 需要禁用所有修复并让任意 OpenAPI 校验错误阻止启动时，可添加 `--strict-validation`。
+=======
+>>>>>>> a3b93fdd98548eef1c651dab869bc76ce05e0938
