@@ -45,6 +45,7 @@ OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAM
 - 支持中英文接口搜索，并对 Summary、Tag、Path 等字段进行确定性加权；
 - 按需展开本地 `$ref`，限制最大深度和属性数量；
 - 检测循环引用，并标记无法解析的引用；
+- 兼容模式可保守修复确定可解析的脏 `$ref`，并报告修复、跳过和校验诊断；
 - 远程文档支持自定义请求头和超时；
 - 刷新失败时保留旧文档，不影响现有查询；
 - 通过 stdio 工作，可接入任意兼容 MCP 的 Agent 或 IDE。
@@ -53,7 +54,7 @@ OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAM
 
 | 项目 | 状态 |
 | :--- | :--- |
-| 当前版本 | `0.1.4` |
+| 当前版本 | `0.1.5` |
 | 运行环境 | Node.js 20+ |
 | 项目阶段 | 可用的早期版本 |
 | 传输方式 | stdio |
@@ -74,7 +75,7 @@ OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAM
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.4",
+        "openapi-docs-mcp@0.1.5",
         "--source",
         "https://api.example.com/v3/api-docs",
         "--timeout",
@@ -90,7 +91,7 @@ OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAM
 安装后可以直接使用 `openapi-docs-mcp` 命令：
 
 ```bash
-npm install --global openapi-docs-mcp@0.1.4
+npm install --global openapi-docs-mcp@0.1.5
 openapi-docs-mcp --source https://api.example.com/v3/api-docs --timeout 30000
 ```
 
@@ -117,7 +118,7 @@ openapi-docs-mcp --source https://api.example.com/v3/api-docs --timeout 30000
 如果 MCP Client 使用了不兼容的 Node.js 或 `npx`，可以通过 mise 固定运行时版本：
 
 ```bash
-mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
+mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
   --source https://api.example.com/v3/api-docs \
   --timeout 30000
 ```
@@ -135,7 +136,7 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
         "--",
         "npx",
         "--yes",
-        "openapi-docs-mcp@0.1.4",
+        "openapi-docs-mcp@0.1.5",
         "--source",
         "https://api.example.com/v3/api-docs",
         "--timeout",
@@ -159,7 +160,7 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.4",
+        "openapi-docs-mcp@0.1.5",
         "--source",
         "https://order.example.com/v3/api-docs"
       ]
@@ -168,7 +169,7 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.4",
+        "openapi-docs-mcp@0.1.5",
         "--source",
         "https://user.example.com/v3/api-docs"
       ]
@@ -184,13 +185,13 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.4 \
 **读取本地文档**
 
 ```bash
-npx -y openapi-docs-mcp@0.1.4 --source ./openapi.yaml
+npx -y openapi-docs-mcp@0.1.5 --source ./openapi.yaml
 ```
 
 **读取需要鉴权的远程文档**
 
 ```bash
-npx -y openapi-docs-mcp@0.1.4 \
+npx -y openapi-docs-mcp@0.1.5 \
   --source https://api.example.com/v3/api-docs \
   --header Authorization="Bearer token" \
   --header X-Tenant-Id=tenant-1 \
@@ -343,6 +344,7 @@ pnpm build
 - JSON 和 YAML；
 - 本地文件和 HTTP(S) URL；
 - 本地 `$ref` 按需展开；
+- 通过 `reload_document` 手动重新加载文档；
 - stdio MCP 传输。
 
 暂不支持：
@@ -352,10 +354,10 @@ pnpm build
 - 展开其他文件或 URL 中的外部 `$ref`；
 - 向量数据库或 Embedding 搜索；
 - Streamable HTTP MCP 部署；
-- OpenAPI 文档自动刷新；
+- OpenAPI 文档自动轮询或文件监听；
 - 模型厂商私有能力。
 
-当 OpenAPI 文档发生变化时，重启 MCP Server 即可重新加载和建立索引。
+当 OpenAPI 文档发生变化时，可以调用 `reload_document` 重新加载；也可以重启 MCP Server。
 
 ## 设计原则
 
