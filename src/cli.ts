@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { loadOpenApi } from "./openapi/loader.js";
+import { formatDiagnosticSummary } from "./openapi/diagnostics.js";
 import { createMcpServer } from "./mcp/server.js";
 import { OpenApiService } from "./service.js";
 
@@ -23,8 +24,8 @@ async function main(): Promise<void> {
   console.error(
     `Loaded ${context.operations.length} operations from ${context.source} (OpenAPI ${context.version})`,
   );
-  for (const warning of context.validationWarnings) {
-    console.error(`Validation warning (${warning.count}): ${warning.message}`);
+  for (const line of formatDiagnosticSummary(context.diagnostics)) {
+    console.error(line);
   }
   serveStdio(() => createMcpServer(service), {
     onerror: (error) => console.error(error),

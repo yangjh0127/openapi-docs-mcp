@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createOpenApiContext, loadOpenApi } from "../src/openapi/loader.js";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/api-docs.json", import.meta.url));
+const suppliedDocument = "G:\\znwd-html\\api-docs.json";
 
 describe("OpenAPI loader", () => {
   it("loads, validates, and indexes a local document", async () => {
@@ -159,4 +161,20 @@ paths:
       /Invalid OpenAPI document/,
     );
   });
+
+  it.skipIf(!existsSync(suppliedDocument))(
+    "loads the supplied imperfect backend document",
+    async () => {
+      const context = await loadOpenApi(suppliedDocument);
+
+      expect(context.operations).toHaveLength(194);
+      expect(context.diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: "ref_repaired",
+          original: "统一API响应结果«分页对象«分部门使用/人均使用统计表 VO»»",
+        }),
+      );
+    },
+    10_000,
+  );
 });
