@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { validate } from "@scalar/openapi-parser";
 import type { OpenAPI } from "@scalar/openapi-types";
-import type { JsonObject, OpenApiContext } from "../types.js";
+import type { JsonObject, OpenApiContext, OpenApiDiagnostic } from "../types.js";
+import { normalizeOpenApiDocument } from "./normalize.js";
 import { extractOperations } from "./operations.js";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -29,37 +30,95 @@ export async function createOpenApiContext(
   source = "memory",
   options: Pick<LoadOpenApiOptions, "validationMode"> = {},
 ): Promise<OpenApiContext> {
-  const result = await validate(input);
-  if (!result.valid) {
-    const specification = result.specification;
-    const compatibleErrors = specification
-      ? result.errors.filter((error) => isCompatibleUnicodeReferenceError(error, specification))
-      : [];
-    const fatalErrors = result.errors.filter((error) => !compatibleErrors.includes(error));
-
-    if (options.validationMode === "strict" || !specification || fatalErrors.length > 0) {
-      throw new Error(`Invalid OpenAPI document: ${formatValidationErrors(result.errors)}`);
+  const initial = await validateInput(input);
+  const initialErrors = initial.errors ?? [];
+  if (options.validationMode === "strict") {
+    if (!initial.valid || !initial.specification) {
+      throw invalidDocument(initialErrors);
     }
-
-    const document = specification as OpenAPI.Document;
-    assertDocumentShape(document);
+    const document = initial.specification as OpenAPI.Document;
     return {
       document,
       source,
-      version: result.version ?? getDocumentVersion(document),
+      version: initial.version ?? getDocumentVersion(document),
       operations: extractOperations(document),
-      validationWarnings: summarizeWarnings(compatibleErrors),
+      validationWarnings: [],
+      diagnostics: [],
     };
   }
 
+  if (!initial.specification) throw invalidDocument(initialErrors);
+  const parsed = initial.specification as unknown as OpenAPI.Document;
+  assertDocumentShape(parsed);
+
+  const normalized = normalizeOpenApiDocument(parsed as unknown as JsonObject);
+  const result = await validateInput(normalized.document);
+  const resultErrors = result.errors ?? [];
+  const fatalErrors = resultErrors.filter(isFatalValidationError);
+  if (!result.specification || fatalErrors.length > 0) {
+    throw invalidDocument(fatalErrors.length ? fatalErrors : resultErrors);
+  }
+
   const document = result.specification as OpenAPI.Document;
+  assertDocumentShape(document);
   return {
     document,
     source,
-    version: result.version,
+    version: result.version ?? getDocumentVersion(document),
     operations: extractOperations(document),
-    validationWarnings: [],
+    validationWarnings: summarizeWarnings(resultErrors),
+    diagnostics: [
+      ...normalized.diagnostics,
+      ...resultErrors.map(toValidationDiagnostic),
+    ],
   };
+}
+
+async function validateInput(input: string | JsonObject) {
+  try {
+    return await validate(input);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid OpenAPI document: ${message}`, { cause: error });
+  }
+}
+
+function invalidDocument(
+  errors: Array<{ message: string; path?: string[] | string }>,
+): Error {
+  return new Error(`Invalid OpenAPI document: ${formatValidationErrors(errors)}`);
+}
+
+function isFatalValidationError(error: {
+  message: string;
+  path?: string[] | string;
+}): boolean {
+  const path = validationPath(error);
+  return (
+    path === "" ||
+    /^\/(?:openapi|swagger|info)(?:\/|$)/.test(path) ||
+    path === "/paths"
+  );
+}
+
+function toValidationDiagnostic(error: {
+  message: string;
+  path?: string[] | string;
+}): OpenApiDiagnostic {
+  return {
+    severity: "warning",
+    code: "validation_warning",
+    path: validationPath(error),
+    message: error.message,
+  };
+}
+
+function validationPath(error: { path?: string[] | string }): string {
+  return Array.isArray(error.path)
+    ? `/${error.path.join("/")}`
+    : typeof error.path === "string"
+      ? error.path
+      : "";
 }
 
 function isHttpUrl(value: string): boolean {
@@ -82,40 +141,6 @@ async function fetchDocument(
   }
 
   return response.text();
-}
-
-function isCompatibleUnicodeReferenceError(
-  error: { message: string; path?: string[] | string },
-  document: JsonObject,
-): boolean {
-  const messageMatches =
-    error.message === "Property $ref is not expected to be here" ||
-    error.message.includes("contains non-ASCII characters");
-  if (!messageMatches || typeof error.path !== "string") return false;
-
-  const value = resolveJsonPointer(document, error.path);
-  const ref =
-    typeof value === "string"
-      ? value
-      : value && typeof value === "object"
-        ? (value as JsonObject).$ref
-        : undefined;
-  if (typeof ref !== "string" || !ref.startsWith("#/") || !/[^\x00-\x7F]/.test(ref)) {
-    return false;
-  }
-  return resolveJsonPointer(document, ref.slice(1)) !== undefined;
-}
-
-function resolveJsonPointer(root: unknown, pointer: string): unknown {
-  if (pointer === "") return root;
-  if (!pointer.startsWith("/")) return undefined;
-  let current = root;
-  for (const rawPart of pointer.slice(1).split("/")) {
-    const part = decodeURIComponent(rawPart.replace(/~1/g, "/").replace(/~0/g, "~"));
-    if (!current || typeof current !== "object" || Array.isArray(current)) return undefined;
-    current = (current as JsonObject)[part];
-  }
-  return current;
 }
 
 function formatValidationErrors(

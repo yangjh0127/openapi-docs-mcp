@@ -49,6 +49,28 @@ export interface OpenApiContext {
   version: string;
   operations: OperationEntry[];
   validationWarnings: Array<{ message: string; count: number }>;
+  diagnostics: OpenApiDiagnostic[];
+}
+
+export type DiagnosticSeverity = "repair" | "warning" | "skipped";
+
+export type DiagnosticCode =
+  | "ref_repaired"
+  | "ref_unresolved"
+  | "ref_ambiguous"
+  | "path_skipped"
+  | "operation_skipped"
+  | "responses_added"
+  | "duplicate_operation_id"
+  | "validation_warning";
+
+export interface OpenApiDiagnostic {
+  severity: DiagnosticSeverity;
+  code: DiagnosticCode;
+  path: string;
+  message: string;
+  original?: unknown;
+  replacement?: unknown;
 }
 
 export interface SchemaFormatOptions {

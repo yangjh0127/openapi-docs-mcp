@@ -11,6 +11,7 @@ describe("OpenAPI loader", () => {
     expect(context.version).toBe("3.0");
     expect(context.operations).toHaveLength(3);
     expect(context.operations.map((entry) => entry.id)).toContain("pageSafetyHazards");
+    expect(context.diagnostics).toEqual([]);
   });
 
   it("rejects an invalid document with useful validation details", async () => {
@@ -89,5 +90,73 @@ paths:
     await expect(
       createOpenApiContext(document, "memory", { validationMode: "strict" }),
     ).rejects.toThrow(/Invalid OpenAPI document/);
+  });
+
+  it("repairs the observed malformed response reference in compatible mode", async () => {
+    const document = {
+      openapi: "3.0.3",
+      info: { title: "API", version: "1" },
+      paths: {
+        "/stats": {
+          post: {
+            responses: {
+              "200": {
+                content: {
+                  "*/*": {
+                    schema: { $ref: "统一响应«部门使用/人均统计»" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      components: {
+        schemas: {
+          "统一响应«部门使用/人均统计»": { type: "object" },
+        },
+      },
+    };
+
+    const context = await createOpenApiContext(document);
+
+    expect(context.operations).toHaveLength(1);
+    expect(context.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "ref_repaired" }),
+    );
+    expect(
+      document.paths["/stats"].post.responses["200"].content["*/*"].schema.$ref,
+    ).toBe("统一响应«部门使用/人均统计»");
+    await expect(
+      createOpenApiContext(document, "memory", { validationMode: "strict" }),
+    ).rejects.toThrow(/Invalid OpenAPI document/);
+  });
+
+  it("loads usable operations while skipping locally malformed entries", async () => {
+    const context = await createOpenApiContext({
+      openapi: "3.0.3",
+      info: { title: "API", version: "1" },
+      paths: {
+        "/broken": { post: [] },
+        "/usable": {
+          get: { responses: { "200": { description: "OK" } } },
+        },
+      },
+    });
+
+    expect(context.operations.map((item) => item.path)).toEqual(["/usable"]);
+    expect(context.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "operation_skipped" }),
+    );
+  });
+
+  it.each([
+    null,
+    [],
+    { openapi: "3.0.3", info: {}, paths: null },
+  ])("rejects unusable top-level input %#", async (input) => {
+    await expect(createOpenApiContext(input as never)).rejects.toThrow(
+      /Invalid OpenAPI document/,
+    );
   });
 });

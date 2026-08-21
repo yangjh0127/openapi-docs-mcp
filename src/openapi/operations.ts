@@ -18,6 +18,7 @@ export function extractOperations(document: OpenAPI.Document): OperationEntry[] 
   const paths = asObject(root.paths);
   if (!paths) return [];
 
+  const operationIdCounts = countOperationIds(paths);
   const operations: OperationEntry[] = [];
   for (const [path, rawPathItem] of Object.entries(paths)) {
     const pathItem = asObject(rawPathItem);
@@ -29,7 +30,10 @@ export function extractOperations(document: OpenAPI.Document): OperationEntry[] 
 
       const operationId = asString(operation.operationId);
       const entry: OperationEntry = {
-        id: operationId || `${method.toUpperCase()} ${path}`,
+        id:
+          operationId && operationIdCounts.get(operationId) === 1
+            ? operationId
+            : `${method.toUpperCase()} ${path}`,
         method,
         path,
         tags: asStringArray(operation.tags),
@@ -48,6 +52,20 @@ export function extractOperations(document: OpenAPI.Document): OperationEntry[] 
   return operations.sort((a, b) =>
     a.path.localeCompare(b.path) || a.method.localeCompare(b.method),
   );
+}
+
+function countOperationIds(paths: JsonObject): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const rawPathItem of Object.values(paths)) {
+    const pathItem = asObject(rawPathItem);
+    if (!pathItem) continue;
+    for (const method of HTTP_METHODS) {
+      const operation = asObject(pathItem[method]);
+      const operationId = asString(operation?.operationId);
+      if (operationId) counts.set(operationId, (counts.get(operationId) ?? 0) + 1);
+    }
+  }
+  return counts;
 }
 
 export function findOperation(
@@ -82,4 +100,3 @@ export function asString(value: unknown): string | undefined {
 export function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
-
