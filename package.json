@@ -1,6 +1,6 @@
 {
   "name": "openapi-docs-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A vendor-neutral MCP server for searching and understanding OpenAPI documents.",
   "type": "module",
   "bin": {
