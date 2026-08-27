@@ -10,63 +10,25 @@
 ![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-**快速导航：** [名称](#名称) · [简介](#简介) · [详细描述](#详细描述) · [项目状态](#项目状态) · [使用方法](#使用方法)
+OpenAPI Docs MCP 是一个厂商无关的 MCP Server。它读取本地或远程的 OpenAPI 文档，在内存中建立索引，让编码 Agent 能快速搜索接口并获取参数、请求体、响应和 Schema。
 
----
+服务只读取接口文档，不会调用文档中描述的真实后端 API。
 
-## 名称
+## 功能特性
 
-**OpenAPI Docs MCP**
-
-npm 包：[`openapi-docs-mcp`](https://www.npmjs.com/package/openapi-docs-mcp)
-
-## 简介
-
-一个厂商无关的 MCP Server，让编码 Agent 能够搜索和理解 OpenAPI/Swagger 文档。
-
-服务只读取接口文档，不会调用文档中描述的真实后端 API。它支持本地文件和远程地址，启动后使用内存索引提供稳定、快速的查询。
-
-## 详细描述
-
-OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAML、本地文件及 HTTP(S) URL。
-
-它提供 5 个 MCP 工具：
-
-| 工具 | 作用 |
-| :--- | :--- |
-| `search_api` | 按关键词、路径、Tag、描述或 `operationId` 搜索接口 |
-| `get_api` | 获取接口参数、请求体、响应和展开后的 Schema |
-| `get_schema` | 按名称读取组件 Schema |
-| `list_groups` | 列出 OpenAPI Tags 及接口数量 |
-| `reload_document` | 重新加载文档，无需重启 MCP Server |
-
-### 核心能力
-
-- 支持中英文接口搜索，并对 Summary、Tag、Path 等字段进行确定性加权；
+- 支持 OpenAPI 3.0、3.1 和 Swagger 2.0；
+- 支持 JSON、YAML、本地文件和 HTTP(S) URL；
+- 支持中英文搜索，并对 Summary、Tag、Path 等字段进行确定性加权；
 - 按需展开本地 `$ref`，限制最大深度和属性数量；
 - 检测循环引用，并标记无法解析的引用；
-- 兼容模式可保守修复确定可解析的脏 `$ref`，并报告修复、跳过和校验诊断；
+- 兼容模式可保守修复能够明确解析的脏 `$ref`；
 - 远程文档支持自定义请求头和超时；
-- 刷新失败时保留旧文档，不影响现有查询；
-- 通过 stdio 工作，可接入任意兼容 MCP 的 Agent 或 IDE。
+- 支持运行时重新加载，失败时继续保留旧文档；
+- 通过 stdio 接入任意兼容 MCP 的 Agent 或 IDE。
 
-## 项目状态
+## 快速开始
 
-| 项目 | 状态 |
-| :--- | :--- |
-| 当前版本 | `0.1.5` |
-| 运行环境 | Node.js 20+ |
-| 项目阶段 | 可用的早期版本 |
-| 传输方式 | stdio |
-| 许可证 | MIT |
-
-> **说明：** 当前暂不支持外部文件或 URL `$ref`、向量搜索、Streamable HTTP 部署以及真实后端 API 调用。
-
-## 使用方法
-
-### 方式一：通过 npx 运行（推荐）
-
-无需安装或克隆项目，直接在 MCP Client 中启动：
+要求 Node.js 20 或更高版本。无需安装或克隆项目，直接把以下配置加入 MCP Client：
 
 ```json
 {
@@ -77,118 +39,24 @@ OpenAPI Docs MCP 支持 OpenAPI 3.0、3.1 和 Swagger 2.0，可读取 JSON、YAM
         "-y",
         "openapi-docs-mcp@0.1.5",
         "--source",
-        "https://api.example.com/v3/api-docs",
-        "--timeout",
-        "30000"
+        "https://api.example.com/v3/api-docs"
       ]
     }
   }
 }
 ```
 
-### 方式二：全局安装
+不同客户端的外层字段可能是 `mcpServers`、`servers` 或其他名称，但 `command` 和 `args` 的内容相同。
 
-安装后可以直接使用 `openapi-docs-mcp` 命令：
-
-```bash
-npm install --global openapi-docs-mcp@0.1.5
-openapi-docs-mcp --source https://api.example.com/v3/api-docs --timeout 30000
-```
-
-对应的 MCP Client 配置：
-
-```json
-{
-  "mcpServers": {
-    "project-api-docs": {
-      "command": "openapi-docs-mcp",
-      "args": [
-        "--source",
-        "https://api.example.com/v3/api-docs",
-        "--timeout",
-        "30000"
-      ]
-    }
-  }
-}
-```
-
-### 方式三：通过 mise 固定 Node.js
-
-如果 MCP Client 使用了不兼容的 Node.js 或 `npx`，可以通过 mise 固定运行时版本：
-
-```bash
-mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
-  --source https://api.example.com/v3/api-docs \
-  --timeout 30000
-```
-
-在 MCP Client 中，将 `mise` 作为启动命令：
-
-```json
-{
-  "mcpServers": {
-    "project-api-docs": {
-      "command": "mise",
-      "args": [
-        "exec",
-        "node@24",
-        "--",
-        "npx",
-        "--yes",
-        "openapi-docs-mcp@0.1.5",
-        "--source",
-        "https://api.example.com/v3/api-docs",
-        "--timeout",
-        "30000"
-      ]
-    }
-  }
-}
-```
-
-> **提示：** 不同 MCP Client 的外层配置字段可能是 `mcpServers`、`servers` 或其他名称，但 `command` 和 `args` 的内容相同。如果客户端找不到 `mise`，可通过 Windows 的 `where.exe mise` 或 macOS/Linux 的 `which mise` 查询路径，并将 `command` 替换为绝对路径。
-
-### 方式四：同时连接多个项目
-
-为每份 OpenAPI 文档配置一个独立的 MCP 实例：
-
-```json
-{
-  "mcpServers": {
-    "order-api-docs": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "openapi-docs-mcp@0.1.5",
-        "--source",
-        "https://order.example.com/v3/api-docs"
-      ]
-    },
-    "user-api-docs": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "openapi-docs-mcp@0.1.5",
-        "--source",
-        "https://user.example.com/v3/api-docs"
-      ]
-    }
-  }
-}
-```
-
-每个实例单独加载和刷新自己的文档，互不影响。
-
-### 更多启动示例
-
-**读取本地文档**
+### 读取本地文档
 
 ```bash
 npx -y openapi-docs-mcp@0.1.5 --source ./openapi.yaml
 ```
 
-**读取需要鉴权的远程文档**
+MCP Client 中使用本地文件时，建议将文档路径写成绝对路径。
+
+### 读取需要鉴权的远程文档
 
 ```bash
 npx -y openapi-docs-mcp@0.1.5 \
@@ -198,27 +66,176 @@ npx -y openapi-docs-mcp@0.1.5 \
   --timeout 30000
 ```
 
-### CLI 参数
+### 同时连接多个项目
+
+每份 OpenAPI 文档对应一个独立实例：
+
+```json
+{
+  "mcpServers": {
+    "order-api-docs": {
+      "command": "npx",
+      "args": ["-y", "openapi-docs-mcp@0.1.5", "--source", "https://order.example.com/v3/api-docs"]
+    },
+    "user-api-docs": {
+      "command": "npx",
+      "args": ["-y", "openapi-docs-mcp@0.1.5", "--source", "https://user.example.com/v3/api-docs"]
+    }
+  }
+}
+```
+
+各实例独立加载和刷新自己的文档，互不影响。
+
+## 其他安装方式
+
+### 全局安装
+
+```bash
+npm install --global openapi-docs-mcp@0.1.5
+openapi-docs-mcp --source https://api.example.com/v3/api-docs
+```
+
+全局安装后的 MCP 配置：
+
+```json
+{
+  "mcpServers": {
+    "project-api-docs": {
+      "command": "openapi-docs-mcp",
+      "args": ["--source", "https://api.example.com/v3/api-docs"]
+    }
+  }
+}
+```
+
+### 使用 mise 固定 Node.js 版本
+
+如果 MCP Client 使用的 Node.js 或 `npx` 不兼容，可以通过 mise 固定运行时：
+
+```bash
+mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
+  --source https://api.example.com/v3/api-docs
+```
+
+对应的 MCP 配置：
+
+```json
+{
+  "mcpServers": {
+    "project-api-docs": {
+      "command": "mise",
+      "args": [
+        "exec", "node@24", "--", "npx", "--yes",
+        "openapi-docs-mcp@0.1.5", "--source", "https://api.example.com/v3/api-docs"
+      ]
+    }
+  }
+}
+```
+
+如果客户端找不到 `mise`，可使用 Windows 的 `where.exe mise` 或 macOS/Linux 的 `which mise` 查询路径，并将 `command` 替换为绝对路径。
+
+## CLI 参数
 
 | 参数 | 说明 |
 | :--- | :--- |
-| `-s, --source <value>` | OpenAPI 文件或 HTTP(S) URL，必填 |
-| `--header NAME=VALUE` | 远程文档请求头，可重复使用 |
+| `-s, --source <value>` | OpenAPI JSON/YAML 文件或 HTTP(S) URL，必填 |
+| `--header NAME=VALUE` | 加载远程文档时使用的请求头，可重复传入 |
 | `--timeout <ms>` | 远程加载超时，默认 10000 毫秒 |
-| `--strict-validation` | 将所有 OpenAPI 校验警告视为错误 |
+| `--strict-validation` | 禁用兼容修复，并将所有 OpenAPI 校验警告视为错误 |
 | `-h, --help` | 显示帮助 |
 
-### 本地开发
+## MCP 工具
+
+| 工具 | 作用 |
+| :--- | :--- |
+| `search_api` | 按关键词、路径、Tag、描述或 `operationId` 搜索接口 |
+| `get_api` | 获取接口参数、请求体、响应和展开后的 Schema |
+| `get_schema` | 按名称读取组件 Schema |
+| `list_groups` | 列出 OpenAPI Tags 及接口数量 |
+| `reload_document` | 重新加载文档，无需重启 MCP Server |
+
+### `search_api`
+
+返回经过排序的轻量候选结果。推荐先搜索，再把结果中的 `id` 传给 `get_api`。
+
+| 参数 | 必填 | 说明 |
+| :--- | :---: | :--- |
+| `query` | 否 | 搜索关键词，例如 `异常分页列表` 或 `create user` |
+| `method` | 否 | HTTP 方法过滤条件，例如 `GET`、`POST` |
+| `tag` | 否 | 精确匹配 OpenAPI Tag |
+| `limit` | 否 | 返回数量，默认 10，最大 50 |
+
+搜索依次侧重 `summary`、`tags`、`path`、`description` 和 `operationId`。中文搜索不依赖空格分词，会结合标准化、包含匹配和字符片段进行评分。
+
+### `get_api`
+
+获取单个接口的完整上下文，包括 HTTP 方法、路径、参数、请求体、响应、Tags、Security、Deprecated 元数据和展开后的 Schema。
+
+优先传入 `search_api` 返回的 `id`；也可以传入精确的 `path` 和可选的 `method`。`maxDepth` 控制 Schema 最大展开深度，默认 5，范围为 1–12。
+
+### `get_schema`
+
+按精确名称读取 `components.schemas` 中的 Schema。`maxDepth` 同样默认为 5，范围为 1–12。本地 `$ref` 展开具有深度、属性数量和循环引用保护。
+
+### `list_groups`
+
+列出 OpenAPI Tags 及每个 Tag 下的接口数量。没有 Tag 的接口归入 `untagged`。
+
+### `reload_document`
+
+重新加载并校验启动时指定的文档，然后原子替换内存索引。加载失败时返回错误，并继续使用上一次成功加载的文档。
+
+## 推荐调用流程
+
+```text
+用户描述需要实现的功能
+        ↓
+search_api 搜索候选接口
+        ↓
+根据 summary、tag、path 选择接口
+        ↓
+get_api 获取请求和响应结构
+        ↓
+必要时调用 get_schema
+        ↓
+生成类型、API 方法或业务代码
+```
+
+## 文档兼容与校验
+
+默认使用兼容校验模式。部分 Springdoc 文档会生成包含中文名称、缺少本地前缀或未转义 JSON Pointer 字符的 `$ref`。只要目标能够唯一确定，项目就会修复内存副本并输出诊断，但不会修改源文件。
+
+兼容模式还会跳过无法表示为对象的 path item 或 operation，并为缺少 `responses` 的 operation 补充空对象。修复、跳过、未解析引用和歧义引用会通过 stderr 输出有界摘要，不会污染 MCP 使用的 stdout。
+
+无法解析或存在多个精确候选的引用会保留原值。项目不会进行模糊、忽略大小写或裁剪空白后的匹配，也不会加载外部 URL 或文件引用。无法解析文档，或缺少顶层版本、`info`、`paths` 等整体不可用的情况，仍会阻止服务启动。
+
+如需禁用所有兼容修复，请使用 `--strict-validation`。
+
+## 当前限制
+
+- 不调用真实后端 API；
+- 不保存或管理后端鉴权凭证；
+- 不展开其他文件或 URL 中的外部 `$ref`；
+- 不提供向量数据库或 Embedding 搜索；
+- 不支持 Streamable HTTP 部署；
+- 不自动轮询 OpenAPI 文档或监听文件变化；
+- 不依赖模型厂商私有能力。
+
+文档发生变化时，可调用 `reload_document`，也可以重启 MCP Server。
+
+## 本地开发
 
 ```bash
 pnpm install
+pnpm typecheck
 pnpm test
 pnpm build
 node dist/cli.js --source ./openapi.json
 ```
-<<<<<<< HEAD
 
-本地 MCP 配置需要使用 `dist/cli.js` 的绝对路径：
+本地 MCP 配置需要使用 `dist/cli.js` 和 OpenAPI 文档的绝对路径：
 
 ```json
 {
@@ -234,130 +251,6 @@ node dist/cli.js --source ./openapi.json
   }
 }
 ```
-
-## MCP 工具
-
-### `search_api`
-
-根据自然语言关键词、路径、标签、描述或 `operationId` 搜索接口，返回经过排序的轻量候选结果。
-
-正常工作流是先调用 `search_api` 找到接口，再把结果中的 `id` 传给 `get_api`。
-
-输入参数：
-
-| 参数     | 必填 | 说明                                             |
-| -------- | ---: | ------------------------------------------------ |
-| `query`  |   否 | 搜索关键词，例如 `异常分页列表` 或 `create user` |
-| `method` |   否 | HTTP 方法过滤条件，例如 `GET`、`POST`            |
-| `tag`    |   否 | 精确匹配 OpenAPI Tag                             |
-| `limit`  |   否 | 返回数量，默认 10，最大 50                       |
-
-搜索字段权重：
-
-| 字段          | 权重 |
-| ------------- | ---: |
-| `summary`     |   10 |
-| `tags`        |    8 |
-| `path`        |    6 |
-| `description` |    4 |
-| `operationId` |    2 |
-
-中文搜索不依赖空格分词，会使用标准化、包含匹配以及二元/三元字符片段进行评分。
-
-### `get_api`
-
-获取单个接口的完整上下文，包括：
-
-- HTTP 方法和路径；
-- Summary、Description 和 Tags；
-- Path、Query、Header、Cookie 参数；
-- Request Body 和 Content-Type；
-- Responses；
-- Security 和 Deprecated 元数据；
-- 按需展开后的 Schema。
-
-优先传入 `search_api` 返回的 `id`，也可以传入精确的 `path` 和可选的 `method`。
-
-`maxDepth` 用于控制 Schema 最大展开深度，默认值为 5，允许范围为 1 到 12。
-
-### `get_schema`
-
-根据精确名称读取 `components.schemas` 中的 Schema。
-
-本地 `$ref` 会按需展开，同时具有：
-
-- 最大深度限制；
-- 最大属性数量限制；
-- 循环引用检测；
-- 无法解析的引用标记。
-
-### `list_groups`
-
-列出 OpenAPI Tags 及每个 Tag 下的接口数量。
-
-没有 Tag 的接口会归入 `untagged`。
-
-## 推荐调用流程
-
-```text
-用户描述需要实现的功能
-        ↓
-search_api 搜索候选接口
-        ↓
-根据 summary、tag、path 选择接口
-        ↓
-get_api 一次获取请求和响应结构
-        ↓
-必要时再调用 get_schema
-        ↓
-生成 TypeScript 类型、API 方法和页面调用代码
-```
-
-## 开发与测试
-
-```bash
-pnpm typecheck
-pnpm test
-pnpm build
-```
-
-当前测试覆盖：
-
-- OpenAPI 3.0 文档加载；
-- OpenAPI 3.1 YAML 文档加载；
-- Swagger 2.0 文档加载；
-- 无效文档错误处理；
-- 中文加权搜索；
-- Method 和 Tag 过滤；
-- 接口请求与响应 Schema 展开；
-- 循环引用保护；
-- MCP 工具发现与调用。
-
-## 当前版本边界
-
-第一版有意保持较小的功能范围。
-
-已经支持：
-
-- OpenAPI 3.0、3.1；
-- Swagger 2.0；
-- JSON 和 YAML；
-- 本地文件和 HTTP(S) URL；
-- 本地 `$ref` 按需展开；
-- 通过 `reload_document` 手动重新加载文档；
-- stdio MCP 传输。
-
-暂不支持：
-
-- 调用真实后端 API；
-- 保存或管理后端鉴权凭证；
-- 展开其他文件或 URL 中的外部 `$ref`；
-- 向量数据库或 Embedding 搜索；
-- Streamable HTTP MCP 部署；
-- OpenAPI 文档自动轮询或文件监听；
-- 模型厂商私有能力。
-
-当 OpenAPI 文档发生变化时，可以调用 `reload_document` 重新加载；也可以重启 MCP Server。
 
 ## 设计原则
 
@@ -377,18 +270,8 @@ Search + Formatter
 任意支持 MCP 的 Agent 或 IDE
 ```
 
-项目不会把 OpenAPI 数据重新转换成一套重复的核心模型。OpenAPI Document 始终是事实来源，自定义类型只用于搜索结果和 MCP 输出。
+OpenAPI Document 始终是事实来源，自定义类型只用于搜索结果和 MCP 输出。Formatter 不会改写已加载的 OpenAPI 声明；兼容模式只在加载阶段修复能够唯一确定目标的局部缺陷，避免根据相似度猜测后端含义。
 
-Formatter 不会改写已经加载的 OpenAPI 声明。兼容模式只在加载阶段修复能够唯一确定目标的局部缺陷，避免工具凭相似度猜测后端含义。
+## License
 
-默认使用兼容校验模式。部分 Springdoc 文档会生成包含中文名称、缺少本地前缀或未转义 JSON Pointer 字符的 `$ref`。只要引用目标能够唯一确定，项目会修复内存副本并输出诊断；不会修改源文件。
-
-### 兼容模式诊断
-
-兼容模式会跳过无法表示为对象的 path item 或 operation，并为缺少 `responses` 的 operation 补充空对象。每一次修复、跳过、未解析引用或歧义引用都会通过 stderr 输出有界摘要，不会污染 MCP 使用的 stdout。
-
-未解析或存在多个精确候选的引用会保持原值，项目不会进行模糊、忽略大小写或裁剪空白后的匹配，也不会加载外部 URL 或文件引用。只有无法解析文档、缺少顶层版本、`info` 或 `paths` 等整体不可用情况才会阻止兼容模式启动。
-
-需要禁用所有修复并让任意 OpenAPI 校验错误阻止启动时，可添加 `--strict-validation`。
-=======
->>>>>>> a3b93fdd98548eef1c651dab869bc76ce05e0938
+[MIT](LICENSE)
