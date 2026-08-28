@@ -1,7 +1,16 @@
 import type { OpenAPI } from "@scalar/openapi-types";
 import type { JsonObject, OperationEntry, SchemaFormatOptions } from "../types.js";
 import { asObject, asString } from "../openapi/operations.js";
-import { formatSchema, resolveLocalReference } from "./schema.js";
+import {
+  decodeReferenceName,
+  formatSchema,
+  resolveLocalReference,
+} from "./schema.js";
+
+interface ReferenceFormatState {
+  depth: number;
+  references: Set<string>;
+}
 
 export function formatOperation(
   document: OpenAPI.Document,
@@ -12,7 +21,9 @@ export function formatOperation(
   const parameters = [
     ...asArray(entry.pathItem.parameters),
     ...asArray(operation.parameters),
-  ].map((parameter) => formatParameter(document, parameter, options));
+  ].map((parameter) =>
+    formatParameter(document, parameter, options, initialReferenceState()),
+  );
 
   const result: JsonObject = {
     id: entry.id,
@@ -20,7 +31,12 @@ export function formatOperation(
     path: entry.path,
     tags: entry.tags,
     parameters,
-    responses: formatResponses(document, operation.responses, options),
+    responses: formatResponses(
+      document,
+      operation.responses,
+      options,
+      initialReferenceState(),
+    ),
   };
   copyIfDefined(result, "summary", entry.summary);
   copyIfDefined(result, "description", entry.description);
@@ -29,7 +45,14 @@ export function formatOperation(
   copyIfDefined(result, "security", operation.security);
 
   const requestBody = asObject(operation.requestBody);
-  if (requestBody) result.requestBody = formatRequestBody(document, requestBody, options);
+  if (requestBody) {
+    result.requestBody = formatRequestBody(
+      document,
+      requestBody,
+      options,
+      initialReferenceState(),
+    );
+  }
 
   return result;
 }
@@ -38,17 +61,25 @@ function formatParameter(
   document: OpenAPI.Document,
   rawParameter: unknown,
   options: SchemaFormatOptions,
+  state: ReferenceFormatState,
 ): unknown {
   const parameter = asObject(rawParameter);
   if (!parameter) return rawParameter;
   const ref = asString(parameter.$ref);
   if (ref) {
+    const boundary = referenceBoundary(ref, options, state);
+    if (boundary) return boundary;
     const resolved = resolveLocalReference(document, ref);
     return referenceEnvelope(
       ref,
       resolved === undefined
         ? undefined
-        : formatParameter(document, withoutSameReference(resolved, ref), options),
+        : formatParameter(
+            document,
+            withoutSameReference(resolved, ref),
+            options,
+            nextReferenceState(state, ref),
+          ),
       "parameter",
     );
   }
@@ -70,14 +101,24 @@ function formatRequestBody(
   document: OpenAPI.Document,
   requestBody: JsonObject,
   options: SchemaFormatOptions,
+  state: ReferenceFormatState,
 ): unknown {
   const ref = asString(requestBody.$ref);
   if (ref) {
+    const boundary = referenceBoundary(ref, options, state);
+    if (boundary) return boundary;
     const resolved = resolveLocalReference(document, ref);
     const body = asObject(withoutSameReference(resolved, ref));
     return referenceEnvelope(
       ref,
-      body ? formatRequestBody(document, body, options) : undefined,
+      body
+        ? formatRequestBody(
+            document,
+            body,
+            options,
+            nextReferenceState(state, ref),
+          )
+        : undefined,
       "requestBody",
     );
   }
@@ -93,6 +134,7 @@ function formatResponses(
   document: OpenAPI.Document,
   rawResponses: unknown,
   options: SchemaFormatOptions,
+  state: ReferenceFormatState,
 ): JsonObject {
   const responses = asObject(rawResponses);
   if (!responses) return {};
@@ -102,13 +144,20 @@ function formatResponses(
       if (!response) return [status, rawResponse];
       const ref = asString(response.$ref);
       if (ref) {
+        const boundary = referenceBoundary(ref, options, state);
+        if (boundary) return [status, boundary];
         const resolved = asObject(withoutSameReference(resolveLocalReference(document, ref), ref));
         return [
           status,
           referenceEnvelope(
             ref,
             resolved
-              ? formatResponses(document, { resolved }, options).resolved
+              ? formatResponses(
+                  document,
+                  { resolved },
+                  options,
+                  nextReferenceState(state, ref),
+                ).resolved
               : undefined,
             "response",
           ),
@@ -162,11 +211,42 @@ function copyIfDefined(target: JsonObject, key: string, value: unknown): void {
 function referenceEnvelope(ref: string, value: unknown, key: string): JsonObject {
   const result: JsonObject = {
     $ref: ref,
-    name: decodeURIComponent(ref.split("/").at(-1) ?? ref),
+    name: decodeReferenceName(ref),
   };
   if (value === undefined) result.unresolved = true;
   else result[key] = value;
   return result;
+}
+
+function referenceBoundary(
+  ref: string,
+  options: SchemaFormatOptions,
+  state: ReferenceFormatState,
+): JsonObject | undefined {
+  if (state.references.has(ref)) {
+    return { $ref: ref, name: decodeReferenceName(ref), circular: true };
+  }
+  if (state.depth >= (options.maxDepth ?? 5)) {
+    return {
+      $ref: ref,
+      name: decodeReferenceName(ref),
+      truncated: "maxDepth",
+    };
+  }
+  return undefined;
+}
+
+function initialReferenceState(): ReferenceFormatState {
+  return { depth: 0, references: new Set() };
+}
+
+function nextReferenceState(
+  state: ReferenceFormatState,
+  ref: string,
+): ReferenceFormatState {
+  const references = new Set(state.references);
+  references.add(ref);
+  return { depth: state.depth + 1, references };
 }
 
 function withoutSameReference(value: unknown, ref: string): unknown {

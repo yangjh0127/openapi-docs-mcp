@@ -37,7 +37,7 @@ OpenAPI Docs MCP 是一个厂商无关的 MCP Server。它读取本地或远程�
       "command": "npx",
       "args": [
         "-y",
-        "openapi-docs-mcp@0.1.5",
+        "openapi-docs-mcp",
         "--source",
         "https://api.example.com/v3/api-docs"
       ]
@@ -51,7 +51,7 @@ OpenAPI Docs MCP 是一个厂商无关的 MCP Server。它读取本地或远程�
 ### 读取本地文档
 
 ```bash
-npx -y openapi-docs-mcp@0.1.5 --source ./openapi.yaml
+npx -y openapi-docs-mcp --source ./openapi.yaml
 ```
 
 MCP Client 中使用本地文件时，建议将文档路径写成绝对路径。
@@ -59,7 +59,7 @@ MCP Client 中使用本地文件时，建议将文档路径写成绝对路径。
 ### 读取需要鉴权的远程文档
 
 ```bash
-npx -y openapi-docs-mcp@0.1.5 \
+npx -y openapi-docs-mcp \
   --source https://api.example.com/v3/api-docs \
   --header Authorization="Bearer token" \
   --header X-Tenant-Id=tenant-1 \
@@ -75,11 +75,21 @@ npx -y openapi-docs-mcp@0.1.5 \
   "mcpServers": {
     "order-api-docs": {
       "command": "npx",
-      "args": ["-y", "openapi-docs-mcp@0.1.5", "--source", "https://order.example.com/v3/api-docs"]
+      "args": [
+        "-y",
+        "openapi-docs-mcp",
+        "--source",
+        "https://order.example.com/v3/api-docs"
+      ]
     },
     "user-api-docs": {
       "command": "npx",
-      "args": ["-y", "openapi-docs-mcp@0.1.5", "--source", "https://user.example.com/v3/api-docs"]
+      "args": [
+        "-y",
+        "openapi-docs-mcp",
+        "--source",
+        "https://user.example.com/v3/api-docs"
+      ]
     }
   }
 }
@@ -92,7 +102,7 @@ npx -y openapi-docs-mcp@0.1.5 \
 ### 全局安装
 
 ```bash
-npm install --global openapi-docs-mcp@0.1.5
+npm install --global openapi-docs-mcp
 openapi-docs-mcp --source https://api.example.com/v3/api-docs
 ```
 
@@ -114,7 +124,7 @@ openapi-docs-mcp --source https://api.example.com/v3/api-docs
 如果 MCP Client 使用的 Node.js 或 `npx` 不兼容，可以通过 mise 固定运行时：
 
 ```bash
-mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
+mise exec node@24 -- npx --yes openapi-docs-mcp \
   --source https://api.example.com/v3/api-docs
 ```
 
@@ -126,8 +136,14 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
     "project-api-docs": {
       "command": "mise",
       "args": [
-        "exec", "node@24", "--", "npx", "--yes",
-        "openapi-docs-mcp@0.1.5", "--source", "https://api.example.com/v3/api-docs"
+        "exec",
+        "node@24",
+        "--",
+        "npx",
+        "--yes",
+        "openapi-docs-mcp",
+        "--source",
+        "https://api.example.com/v3/api-docs"
       ]
     }
   }
@@ -138,34 +154,34 @@ mise exec node@24 -- npx --yes openapi-docs-mcp@0.1.5 \
 
 ## CLI 参数
 
-| 参数 | 说明 |
-| :--- | :--- |
-| `-s, --source <value>` | OpenAPI JSON/YAML 文件或 HTTP(S) URL，必填 |
-| `--header NAME=VALUE` | 加载远程文档时使用的请求头，可重复传入 |
-| `--timeout <ms>` | 远程加载超时，默认 10000 毫秒 |
-| `--strict-validation` | 禁用兼容修复，并将所有 OpenAPI 校验警告视为错误 |
-| `-h, --help` | 显示帮助 |
+| 参数                   | 说明                                            |
+| :--------------------- | :---------------------------------------------- |
+| `-s, --source <value>` | OpenAPI JSON/YAML 文件或 HTTP(S) URL，必填      |
+| `--header NAME=VALUE`  | 加载远程文档时使用的请求头，可重复传入          |
+| `--timeout <ms>`       | 远程加载超时，默认 10000 毫秒                   |
+| `--strict-validation`  | 禁用兼容修复，并将所有 OpenAPI 校验警告视为错误 |
+| `-h, --help`           | 显示帮助                                        |
 
 ## MCP 工具
 
-| 工具 | 作用 |
-| :--- | :--- |
-| `search_api` | 按关键词、路径、Tag、描述或 `operationId` 搜索接口 |
-| `get_api` | 获取接口参数、请求体、响应和展开后的 Schema |
-| `get_schema` | 按名称读取组件 Schema |
-| `list_groups` | 列出 OpenAPI Tags 及接口数量 |
-| `reload_document` | 重新加载文档，无需重启 MCP Server |
+| 工具              | 作用                                               |
+| :---------------- | :------------------------------------------------- |
+| `search_api`      | 按关键词、路径、Tag、描述或 `operationId` 搜索接口 |
+| `get_api`         | 获取接口参数、请求体、响应和展开后的 Schema        |
+| `get_schema`      | 按名称读取组件 Schema                              |
+| `list_groups`     | 列出 OpenAPI Tags 及接口数量                       |
+| `reload_document` | 重新加载文档，无需重启 MCP Server                  |
 
 ### `search_api`
 
 返回经过排序的轻量候选结果。推荐先搜索，再把结果中的 `id` 传给 `get_api`。
 
-| 参数 | 必填 | 说明 |
-| :--- | :---: | :--- |
-| `query` | 否 | 搜索关键词，例如 `异常分页列表` 或 `create user` |
-| `method` | 否 | HTTP 方法过滤条件，例如 `GET`、`POST` |
-| `tag` | 否 | 精确匹配 OpenAPI Tag |
-| `limit` | 否 | 返回数量，默认 10，最大 50 |
+| 参数     | 必填 | 说明                                             |
+| :------- | :--: | :----------------------------------------------- |
+| `query`  |  否  | 搜索关键词，例如 `异常分页列表` 或 `create user` |
+| `method` |  否  | HTTP 方法过滤条件，例如 `GET`、`POST`            |
+| `tag`    |  否  | 精确匹配 OpenAPI Tag                             |
+| `limit`  |  否  | 返回数量，默认 10，最大 50                       |
 
 搜索依次侧重 `summary`、`tags`、`path`、`description` 和 `operationId`。中文搜索不依赖空格分词，会结合标准化、包含匹配和字符片段进行评分。
 

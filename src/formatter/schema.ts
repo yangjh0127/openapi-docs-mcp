@@ -44,7 +44,7 @@ function formatSchemaNode(
 
   const ref = asString(schema.$ref);
   if (ref) {
-    const refName = decodeURIComponent(ref.split("/").at(-1) ?? ref);
+    const refName = decodeReferenceName(ref);
     if (state.references.has(ref)) {
       return { $ref: ref, name: refName, circular: true };
     }
@@ -155,13 +155,27 @@ export function resolveLocalReference(document: OpenAPI.Document, ref: string): 
   const parts = ref
     .slice(2)
     .split("/")
-    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"));
+    .map((part) => safeDecodeURIComponent(part).replace(/~1/g, "/").replace(/~0/g, "~"));
   let current: unknown = document;
   for (const part of parts) {
     current = asObject(current)?.[part];
     if (current === undefined) return undefined;
   }
   return current;
+}
+
+export function decodeReferenceName(ref: string): string {
+  return safeDecodeURIComponent(ref.split("/").at(-1) ?? ref)
+    .replace(/~1/g, "/")
+    .replace(/~0/g, "~");
+}
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function copyKnownValues(source: JsonObject, target: JsonObject, keys: string[]): void {
