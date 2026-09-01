@@ -57,6 +57,33 @@ describe("MCP server", () => {
     ).toMatchObject({ readOnlyHint: false, destructiveHint: false });
   });
 
+  it("advertises an evidence-first API discovery workflow", async () => {
+    const { tools } = await client.listTools();
+    const search = tools.find((tool) => tool.name === "search_api");
+    const getApi = tools.find((tool) => tool.name === "get_api");
+    const listGroups = tools.find((tool) => tool.name === "list_groups");
+    const queryDescription = (
+      search?.inputSchema.properties as
+        | Record<string, { description?: string }>
+        | undefined
+    )?.query?.description;
+    const tagDescription = (
+      search?.inputSchema.properties as
+        | Record<string, { description?: string }>
+        | undefined
+    )?.tag?.description;
+
+    expect(search?.description).toMatch(/preserve exact identifiers/i);
+    expect(search?.description).toMatch(/multiple short query variants/i);
+    expect(queryDescription).toMatch(/1–4.*entity.*action/i);
+    expect(queryDescription).toMatch(/not the full user sentence/i);
+    expect(tagDescription).toMatch(/case-insensitive full tag/i);
+    expect(getApi?.description).toMatch(/call directly/i);
+    expect(getApi?.description).toMatch(/never silently replace/i);
+    expect(getApi?.description).toMatch(/path without a method.*search_api first/i);
+    expect(listGroups?.description).toMatch(/terminology is unclear/i);
+  });
+
   it("executes search_api through the MCP protocol", async () => {
     const result = await client.callTool({
       name: "search_api",
@@ -80,4 +107,3 @@ describe("MCP server", () => {
     });
   });
 });
-

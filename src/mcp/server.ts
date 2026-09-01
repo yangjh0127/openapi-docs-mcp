@@ -26,11 +26,19 @@ export function createMcpServer(service: OpenApiService): McpServer {
     {
       title: "Search OpenAPI operations",
       description:
-        "Search API operations by natural-language keywords, path, tag, description, or operationId. Returns ranked lightweight candidates; call get_api for full details.",
+        "Search API operations by keywords, path, tag, description, or operationId. Preserve exact identifiers from the user instead of rewriting them. For colloquial, synonymous, or cross-language requests, make separate calls with multiple short query variants, then call get_api to verify candidates. Do not include conversational filler or negated alternatives in the query.",
       inputSchema: z.object({
-        query: z.string().default("").describe("Keywords such as 异常分页列表 or create user"),
+        query: z
+          .string()
+          .default("")
+          .describe(
+            "Concise OpenAPI-style keywords: 1–4 entity/action terms, not the full user sentence. Preserve exact paths and operationIds. Examples: 用户 停用, 支付 退款, task exception.",
+          ),
         method: z.string().optional().describe("Optional HTTP method filter"),
-        tag: z.string().optional().describe("Optional exact tag filter"),
+        tag: z
+          .string()
+          .optional()
+          .describe("Optional case-insensitive full tag filter"),
         limit: z.number().int().min(1).max(50).default(10),
       }),
       annotations: { readOnlyHint: true, idempotentHint: true },
@@ -52,7 +60,7 @@ export function createMcpServer(service: OpenApiService): McpServer {
     {
       title: "Get one OpenAPI operation",
       description:
-        "Get the request parameters, expanded request body, responses, tags, and metadata for one operation. Prefer the id returned by search_api.",
+        "Get the request parameters, expanded request body, responses, tags, and metadata for one operation. Call directly when the user provides an exact path and method, or an id returned by search_api. For a path without a method, call search_api first with the exact path to discover method-specific candidates. If an exact lookup fails, never silently replace it with a guessed candidate; report the failure and clearly label any separately searched alternatives.",
       inputSchema: z
         .object({
           id: z.string().optional().describe("Stable id returned by search_api"),
@@ -106,7 +114,8 @@ export function createMcpServer(service: OpenApiService): McpServer {
     "list_groups",
     {
       title: "List OpenAPI groups",
-      description: "List tags with their operation counts.",
+      description:
+        "List tags with their operation counts. Use this before search_api when the document's business terminology is unclear, then pass the most relevant exact tag as a filter. Skip this discovery step when the user already provides an exact id or path.",
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
