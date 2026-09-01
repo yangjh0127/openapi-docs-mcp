@@ -180,7 +180,7 @@ mise exec node@24 -- npx --yes openapi-docs-mcp \
 | :------- | :--: | :----------------------------------------------- |
 | `query`  |  否  | 搜索关键词，例如 `异常分页列表` 或 `create user` |
 | `method` |  否  | HTTP 方法过滤条件，例如 `GET`、`POST`            |
-| `tag`    |  否  | 精确匹配 OpenAPI Tag                             |
+| `tag`    |  否  | 忽略大小写、完整匹配 OpenAPI Tag                 |
 | `limit`  |  否  | 返回数量，默认 10，最大 50                       |
 
 搜索依次侧重 `summary`、`tags`、`path`、`description` 和 `operationId`。中文搜索不依赖空格分词，会结合标准化、包含匹配和字符片段进行评分。
@@ -189,7 +189,7 @@ mise exec node@24 -- npx --yes openapi-docs-mcp \
 
 获取单个接口的完整上下文，包括 HTTP 方法、路径、参数、请求体、响应、Tags、Security、Deprecated 元数据和展开后的 Schema。
 
-优先传入 `search_api` 返回的 `id`；也可以传入精确的 `path` 和可选的 `method`。`maxDepth` 控制 Schema 最大展开深度，默认 5，范围为 1–12。
+优先传入 `search_api` 返回的 `id`。如果用户已经提供精确的 `path` 和 `method`，可以直接查询；如果只提供 `path`，应先用 `search_api` 确认对应的 HTTP 方法。精确查询失败时，不应静默替换成猜测的接口。`maxDepth` 控制 Schema 最大展开深度，默认 5，范围为 1–12。
 
 ### `get_schema`
 
@@ -206,9 +206,9 @@ mise exec node@24 -- npx --yes openapi-docs-mcp \
 ## 推荐调用流程
 
 ```text
-用户描述需要实现的功能
-        ↓
-search_api 搜索候选接口
+用户提供精确 path + method ──────────→ get_api 直接查询
+        │
+        └─ 否：用简短关键词调用 search_api 搜索候选接口
         ↓
 根据 summary、tag、path 选择接口
         ↓
